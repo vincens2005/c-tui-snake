@@ -10,9 +10,13 @@
 #define RIGHT 2
 #define DOWN 3
 
-int framerate = 10; 
-
-int game[1000][1000]; // if your terminal is over 1000 characters wide this will not work
+/*
+	if your terminal is over 1000 characters wide this will not work
+	a value of 0 for a coordinate is empty. 
+	a value of 1 is a # (used for the snake)
+	a value of 2 is "()" (used for the apple)
+*/
+int game[1000][1000];
 
 int snake[1000][3];
 
@@ -20,7 +24,11 @@ int apple_pos[2];
 
 int snake_len = 8;
 
+int score = 0;
+
 int direction = LEFT;
+
+int game_looping = TRUE;
 
 void setup_ncurses() {
 	initscr();
@@ -65,8 +73,8 @@ void generate_frame() {
 
 void set_apple_pos() {
 	// random apple position
-	apple_pos[0] = rand_range(0, COLS - 2);
-	apple_pos[1] = rand_range(0, LINES);
+	apple_pos[0] = rand_range(2, COLS - 2);
+	apple_pos[1] = rand_range(2, LINES - 2);
 }
 
 void move_snake() {
@@ -75,6 +83,7 @@ void move_snake() {
 	new_snake[0][0] = 1;
 	new_snake[0][1] = snake[0][1];
 	new_snake[0][2] = snake[0][2];
+	// move snake in direction
 	if (direction == RIGHT) {
 		new_snake[0][1] += 1;
 	}
@@ -118,6 +127,29 @@ void move_snake() {
 	}
 }
 
+void check_apple_hit() {
+	// note that the apple is two characters wide
+	if ((snake[0][1] == apple_pos[0] || snake[0][1] == apple_pos[0] + 1) && snake[0][2] == apple_pos[1]) {
+		snake_len++;
+		score++;
+		for (int i = 0; i < 1000; i++) {
+			if (!snake[i][0]) {
+				snake[i][0] = 1; // give snake extra segment
+				break;
+			}
+		}
+		set_apple_pos();
+	}
+	for (int i = 1; i < 1000; i++) {
+		if (!snake[i][0]) {
+			break;
+		}
+		if (snake[0][1] == snake[i][1] && snake[0][2] == snake[i][2]) {
+			game_looping = FALSE; // end the game if snake collides with itself
+		}
+	}
+}
+
 void build_snake() {
 	for (int i = 0; i < snake_len; i++) {
 		snake[i][0] = 1;
@@ -126,18 +158,37 @@ void build_snake() {
 	}
 }
 
+void checkinput() {
+	int ch = getch();
+	if (ch != ERR) {
+		if (ch == 119 && direction != DOWN) {
+			direction = UP;
+		}
+		if (ch == 115 && direction != UP) {
+			direction = DOWN;
+		}
+		if (ch == 97 && direction != RIGHT) {
+			direction = LEFT;
+		}
+		if (ch == 100 && direction != LEFT) {
+			direction = RIGHT;
+		}
+	}
+}
+
 int main() {
 	setup_ncurses();
 	build_snake();
 	set_apple_pos();
-	while (1) {
+	while (game_looping) {
+		checkinput();
+		check_apple_hit();
 		move_snake();
 		generate_frame();
 		draw_frame();
-		usleep(100000);
+		usleep(75000);
 	}
 	endwin();
-	printf("hellow world\r\n");
-	printf("%d\r\n", rand_range(0, 10));
+	printf("game over\r\nscore: %d", score);
 	return 0;
 }
